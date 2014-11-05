@@ -1,0 +1,69 @@
+<?php
+
+class weather extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+
+
+		$this->addHook("PRIVMSG.weather"); // To request a log.
+	}
+
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Weather";
+	}
+
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";
+	}
+
+
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+
+		$command = $this->parseCommands($me->getMessage(), 2);
+
+		$url = 'http://thefuckingweather.com/?' . http_build_query(array('where' => $command[1]));
+
+		$ch = curl_init();
+		curl_setopt($ch,CURLOPT_RETURNTRANSFER, TRUE);
+		curl_setopt($ch,CURLOPT_URL,$url);
+		curl_setopt($ch,CURLOPT_HTTPHEADER,array('User-Agent: Mozilla/5.0 (Windows NT 6.1; rv:8.0) Gecko/20100101 Firefox/8.0'));
+
+		$result = curl_exec($ch);
+		curl_close($ch);
+
+		if (preg_match('#<span class="temperature" tempf="(\d+)">#i', $result, $m) != 1) {
+			$this->sendMessage($me->getServer(),$me->getChannel(),"I CAN'T FIND THAT SHIT");
+			return;
+		}
+
+		$temp_f = $m[1];
+		$temp_c = round(((int)$temp_f-32)*5.0/9.0);
+
+		$remark = NULL;
+		if (preg_match('#<p class="remark">([^<]+)</p>#i', $result, $m) == 1) {
+			$remark = $m[1];
+		}
+
+		$flavor = NULL;
+		if (preg_match('#<p class="flavor">([^<]+)</p>#i', $result, $m) == 1) {
+			$flavor = $m[1];
+		}
+
+		$message = "{$temp_c}°C/{$temp_f}°F?! ";
+		if ($remark) $message .= "$remark ";
+		if ($flavor) $message .= "($flavor)";
+
+		$this->sendMessage($me->getServer(),$me->getChannel(),$message);
+	}
+
+	//Permissions ranges from 0 to 9000.
+	final public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}
+
+?>

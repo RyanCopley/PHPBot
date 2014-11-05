@@ -1,0 +1,75 @@
+<?php
+
+class load extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		$this->addHook("PRIVMSG.load"); // To request a log.
+		$this->addHook("PRIVMSG.reload"); // To request a log.
+		$this->addHook("PRIVMSG.loaded"); // To request a log.
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Loader";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+		$command = $this->parseCommands($me->getMessage(), 2);
+		
+		if ($this->isCommand($command,"load") && isset($command[1])) {
+			global $plugins;
+			$newPlugin = loadPlugin($command[1].".bawk");
+			if ($newPlugin != null){
+				$plugins[] = $newPlugin;
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Plugin loaded.");
+			}else{
+				
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Unable to load plugin. Perhaps it was already loaded?");
+			}
+		}
+		
+		if ($this->isCommand($command,"reload") && isset($command[1])) {
+			global $plugins;
+			
+			unloadPlugin($command[1]);
+			
+			$newPlugin = loadPlugin($command[1].".bawk");
+			if ($newPlugin != null){
+				$plugins[] = $newPlugin;
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Plugin reloaded.");
+			}else{
+				
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Plugin not reloaded.");
+			}
+		}
+		
+		
+		if ($this->isCommand($command,"loaded")) {
+			global $plugins;
+			
+			$loadedList = "";
+			foreach ($plugins as $key => $check){
+				$loadedList.= $check["name"].", ";
+			}
+			
+			$loadedList = substr($loadedList,0,strlen($loadedList)-2);
+			$this->sendMessage($me->getServer(),$me->getChannel(),"Plugins Loaded: ".$loadedList);	
+		}
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 100;
+	}
+}
+
+?>

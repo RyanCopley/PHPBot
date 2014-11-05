@@ -1,0 +1,80 @@
+<?php
+
+class s extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		mkdir("plugins/log/");
+
+		$this->addHook("PRIVMSG.s");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "S";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		$server = $me->getServer();
+		
+		$command = $this->parseCommands($me->getMessage(), 3);
+		
+		$original_regex = $command[1];
+		$replacement = $command[2];
+
+		$regex = "#" . str_replace('#', '\#', $original_regex) . "#i";
+		echo "Regex is $regex; Replacement is $replacement.\r\n";
+		
+		if (@preg_replace($regex, $replacement, '') === NULL) {
+			$this->sendMessage($me->getServer(),$me->getChannel(), "'$original_regex' contains a syntax error!");
+			return;
+		}
+		
+		$day = time();
+		
+		$last_check = '';
+		
+		echo "Trying log: plugins/log/".date("d-m-Y",$day)."-".$me->getChannel()."-on-".$server['host'].".log\r\n";
+		
+		$i = 2; //Days to look back, including today
+		while ($i && ($log_content = @file_get_contents("plugins/log/".date("d-m-Y",$day)."-".$me->getChannel()."-on-".$server['host'].".log"))) {
+			$lines = array_reverse(explode("\r\n", $log_content));
+			
+			foreach ($lines as $line) {
+				$last_check = $line;
+				if (preg_match('#(\[\d+-\d+-\d+ \d+:\d+\]) (<[^>]+>|\* [^ ]+) (.*)#', $line, $m) !== 1) continue;
+				
+				$timestamp = $m[1];
+				$poster = $m[2];
+				$message = $m[3];
+				
+				if (preg_match($regex, $message)) {
+					$regexed = @preg_replace($regex, $replacement, $message);
+				}
+				else continue;
+				if ($regexed === NULL) continue;
+
+				$this->sendMessage($me->getServer(),$me->getChannel(), "$poster $regexed");
+				return;
+			}
+			
+			$day -= 3600 * 24;
+			$i--;
+			
+			echo "Trying log: plugins/log/".date("d-m-Y",$day)."-".$me->getChannel()."-on-".$server['host'].".log\r\n";
+		}
+
+		$this->sendMessage($me->getServer(),$me->getChannel(), "Could not find $original_regex in today's logs!");
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}

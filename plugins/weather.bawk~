@@ -1,0 +1,89 @@
+<?php
+
+class weather extends plugin
+{
+    public function __construct()
+    {
+        parent::__construct();
+        
+        
+        $this->addHook("PRIVMSG.weather"); // To request a log.
+    }
+    
+    //Used for the BawkBot to know the plugin name for logs.
+    public function pluginName()
+    {
+        return "Weather";
+    }
+    
+    //Versioning information.
+    public function pluginVersion()
+    {
+        return "1.0";
+    }
+    
+    
+    
+    public function pluginLogic()
+    {
+        $me = $this->receiveMessage();
+        
+        $command = $this->parseCommands($me->getMessage(), 2);
+        
+        
+        if ($this->isCommand($command, "weather")) {
+            // load the XML feeds for the Google Weather API
+            $xml      = simplexml_load_file('http://www.google.com/ig/api?weather=' . urlencode($command[1]));
+            $current  = $xml->xpath("/xml_api_reply/weather/current_conditions");
+            $forecast = $xml->xpath("/xml_api_reply/weather/forecast_conditions");
+            
+            // do a basic error check to see if we can get the current weather condition for the given location
+            // if no return an error.
+            if (!$current[0]->condition['data']) {
+                $error = 'Couldn\'t determine this location';
+                
+            }
+            
+            // is the current weather the same as the forecast? if not display the forecast
+            if (strtolower($current[0]->condition['data']) != strtolower($forecast[0]->condition['data'])) {
+                $outlook = 'but the forecast says ' . strtolower($forecast[0]->condition['data']);
+                
+            }
+            
+            // if the temp in degrees c is below 20 i.e. cold
+            if ($current[0]->temp_c['data'] <= 20) {
+                $coat = 'If you\'re going outside i\'d wrap up warm.';
+                
+            }
+            
+            // if the temp in degrees c is over 21 i.e. Warm / Hot
+            if ($current[0]->temp_c['data'] >= 21) {
+                $coat = 'You should be ok without warm clothes today.';
+                
+            }
+            
+            // check to see if there is rain or storms forecast
+            if (preg_match("/\brain\b/i", $current[0]->condition['data']) || preg_match("/\brain\b/i", $forecast[0]->condition['data']) || preg_match("/\bstorm\b/i", $current[0]->condition['data']) || preg_match("/\bstorm\b/i", $forecast[0]->condition['data'])) {
+                $umbrella = ' But don\'t forget to take an umbrella!';
+            }
+            
+            
+            if ($error){
+	            $finalMsg = $error;
+            }else{
+            	$finalMsg = "The weather in ".$command[1]." is ".strtolower($current[0]->condition['data']).' '. $outlook.". The temperature is currently ".$current[0]->temp_c['data']."°c (".$current[0]->temp_f['data']."°f). ".$coat." ".$umbrella;
+            }
+            
+            
+            $this->sendMessage($me->getServer(), $me->getChannel(), $finalMsg);
+        }
+    }
+    
+    //Permissions ranges from 0 to 9000.
+    final public function getUserPermissions($server, $channel, $nick, $command)
+    {
+        return 0;
+    }
+}
+
+?>

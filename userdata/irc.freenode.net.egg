@@ -1,0 +1,26 @@
+{
+  "BawkBotPermissions":{
+    "##REDAPPS":{
+      "REDAPPS":{
+        "isAuthenticated":0
+      },
+      "OBJECTIVECOPLEY":{
+        "PermissionLevel":0
+      }
+    },
+    "REMOTE":{
+      "REDAPPS":{
+        "isAuthenticated":0
+      }
+    }
+  },
+  "Later":{
+    "##REDAPPS":{
+      "AINGOLD":{
+        "Messages":[
+          
+        ]
+      }
+    }
+  }
+}

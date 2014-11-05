@@ -1,0 +1,118 @@
+<?php
+
+class permissions extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.permit");
+		$this->addHook("PRIVMSG.permissions");
+		$this->addHook("PRIVMSG.rescan");
+		
+		$this->addHook("PRIVMSG.ignore");
+		$this->addHook("PRIVMSG.unignore");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Permissions";
+	}
+	
+	
+	//For you know... reference.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	public function pluginHelp($man,$me){
+	
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Permissions Plugin v".$this->pluginVersion().". This plugin deals with setting and displaying user permissions. ");
+		
+		
+		$command = $this->parseCommands($me->getMessage(), 3);
+		if ($this->isCommand($command,"permit") || $this->isCommand($command,"permissions")) {
+			if ($command[2] == ""){
+				$man->sendMessage($me->getServer(),$me->getChannel(),'Commands available: permit, permissions. You can MANual those commands with `$man <command>`');
+			}else{
+				$man->sendMessage($me->getServer(),$me->getChannel(),'Parameter 1: Nick. Parameter 2: (Optional) Permission to set too. Note: `$permit` and `permissions` are identical.');
+				$man->sendMessage($me->getServer(),$me->getChannel(),'Example 1: (gives ChIkEn permission level 100): `$permit ChIkEn 100`. Example 2: (Prints ChIkEn\'s level): `$permit ChIkEn`');
+			}
+		}
+		
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 150;
+	}
+	
+	public function pluginLogic(){
+        $me = $this->receiveMessage();
+        
+        $channel = strtoupper($me->getChannel());
+        $server = $me->getServer();
+        $server = $server['host'];
+        $pluginData = $this->getUserDataSingleton($me->getServer());
+        $command = $this->parseCommands($me->getMessage(), 3);
+        
+        if ($this->isCommand($command,"rescan")){
+            $pluginData->loadUserData($server);
+    		$this->sendMessage($me->getServer(),$channel,"Rescan complete.");
+        }
+        
+        
+        if ($this->isCommand($command,"ignore")){
+            if (count($command) == 2){
+            
+    			$val = $pluginData->getUserData("BawkBotPermissions",$channel,$command[1]);
+    			if ((int) $val['PermissionLevel'] >=0){
+        			$permissions = -abs((int)($val['PermissionLevel']+1));
+        			
+        			$pluginData->addUserData("BawkBotPermissions", $channel, $command[1], array("PermissionLevel"=>$permissions));
+        			$this->sendMessage($me->getServer(),$channel,$command[1]." is now ignored.");
+    			}else{
+    			     $this->sendMessage($me->getServer(),$channel,$command[1]." is already ignored.");
+    			}
+    		}
+        }
+        
+        
+        if ($this->isCommand($command,"unignore")){
+            if (count($command) == 2){
+            
+    			$val = $pluginData->getUserData("BawkBotPermissions",$channel,$command[1]);
+    			if ((int)$val['PermissionLevel'] <0){
+        			$permissions = abs((int)($val['PermissionLevel']+1));
+        			
+        			$pluginData->addUserData("BawkBotPermissions", $channel, $command[1], array("PermissionLevel"=>$permissions));
+        			$this->sendMessage($me->getServer(),$channel,$command[1]." is now unignored.");
+    			}else{
+    			     $this->sendMessage($me->getServer(),$channel,$command[1]." was not ignored.");
+    			}
+    		}
+        }
+        
+		if ($this->isCommand($command,"permit") || $this->isCommand($command,"permissions")){
+
+    		if (count($command) == 2){
+    			$val = $pluginData->getUserData("BawkBotPermissions",$channel,$command[1]);
+    			$extraMsg = ($val['PermissionLevel'] < 0) ? ", but is ignored" : "";
+    			if ($extraMsg != ""){$val['PermissionLevel']+=1;}
+    			$this->sendMessage($me->getServer(),$channel,"Permissions for user ".$command[1].": ".abs($val['PermissionLevel']).$extraMsg.".");
+    			
+    		}elseif (count($command) == 3){
+    			$pluginData->addUserData("BawkBotPermissions", $channel, $command[1], array("PermissionLevel"=>(int)$command[2]));
+    			$this->sendMessage($me->getServer(),$channel,"Permissions updated.");
+    		}
+		}
+    }
+	
+}
+
+?>

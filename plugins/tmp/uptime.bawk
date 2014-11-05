@@ -1,0 +1,53 @@
+<?php
+
+class uptime1344884317 extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.uptime");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Uptime";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	//Versioning information.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		
+		$me = $this->receiveMessage();
+		global $bootTime;
+		$t = (time() - $bootTime);
+		
+		$days = floor($t / 60/60/24);
+		$hours = floor(($t - $days*60*60*24)/60/60);
+		$minutes = floor(($t - ($hours*60*60))/60) - ($days * 24*60);
+		
+		$this->sendMessage($me->getServer(),$me->getChannel(),$days." days, ".$hours." hours, and ".$minutes." minutes.");
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+	
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Uptime Plugin ".$this->pluginVersion().". Prints how long system has been up.");
+	}
+	
+}
+
+?>

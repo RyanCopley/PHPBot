@@ -1,0 +1,196 @@
+<?php
+
+class strings extends plugin
+{
+    public function __construct()
+    {
+        parent::__construct();
+        
+        $this->addHook("PRIVMSG.explode");
+        $this->addHook("PRIVMSG.substring");
+        $this->addHook("PRIVMSG.tolower");
+        $this->addHook("PRIVMSG.toupper");
+        $this->addHook("PRIVMSG.count");
+        $this->addHook("PRIVMSG.count_ex");
+        $this->addHook("PRIVMSG.length");
+        $this->addHook("PRIVMSG.trim");
+        $this->addHook("PRIVMSG.implode");
+        $this->addHook("PRIVMSG.append");
+        $this->addHook("PRIVMSG.prepend");
+    }
+    
+    //Used for the BawkBot to know the plugin name for logs.
+    public function pluginName()
+    {
+        return "Strings";
+    }
+    
+    //Versioning information.
+    public function pluginVersion()
+    {
+        return "1.0";
+    }
+    
+    
+    
+    public function pluginLogic()
+    {
+        $me = $this->receiveMessage();
+        
+        $command = $this->parseCommands($me->getMessage(), 2);
+        
+        if ($this->isCommand($command, "explode")) {
+            $command = $this->parseCommands($me->getMessage(), 3);
+            if (isset($command[1], $command[2])) {
+                $output = explode($command[1], $command[2]);
+                foreach ($output as $value) {
+                    $value = preg_replace('/[^(\x20-\x7F)]*/', '', $value);
+                    if ($value != "") {
+                        $this->sendMessage($me->getServer(), $me->getChannel(), $value);
+                    }
+                }
+            }
+        }
+        
+        if ($this->isCommand($command, "substring")) {
+            $command = $this->parseCommands($me->getMessage(), 4);
+            if (isset($command[1], $command[2], $command[3])) {
+                $commands = $this->parseSeperateCommands($command[3]);
+                foreach ($commands as $string) {
+                    $this->sendMessage($me->getServer(), $me->getChannel(), substr($string, $command[1], $command[2]));
+                }
+            }
+        }
+        
+        
+        if ($this->isCommand($command, "tolower")) {
+            $command = $this->parseCommands($me->getMessage(), 2);
+            if (isset($command[1])) {
+                $commands = $this->parseSeperateCommands($command[1]);
+                foreach ($commands as $string) {
+                    $this->sendMessage($me->getServer(), $me->getChannel(), strtolower($string));
+                }
+            }
+        }
+        
+        if ($this->isCommand($command, "toupper")) {
+            $command = $this->parseCommands($me->getMessage(), 2);
+            if (isset($command[1])) {
+                $commands = $this->parseSeperateCommands($command[1]);
+                foreach ($commands as $string) {
+                    $this->sendMessage($me->getServer(), $me->getChannel(), strtoupper($string));
+                }
+            }
+        }
+        
+        if ($this->isCommand($command, "count")) {
+            $command = $this->parseCommands($me->getMessage(), 3);
+            if (isset($command[1], $command[2])) {
+                $this->sendMessage($me->getServer(), $me->getChannel(), substr_count($command[2], $command[1]));
+            }
+        }
+        
+        
+        if ($this->isCommand($command, "count_ex")) {
+            $command = $this->parseCommands($me->getMessage(), 3);
+            if (isset($command[1], $command[2])) {
+                $commands = $this->parseSeperateCommands($command[2]);
+                foreach ($commands as $string) {
+                    $this->sendMessage($me->getServer(), $me->getChannel(), substr_count($string, $command[1]));
+                }
+            }
+        }
+        
+        if ($this->isCommand($command, "length")) {
+            $command = $this->parseCommands($me->getMessage(), 2);
+            if (isset($command[1])) {
+                $commands = $this->parseSeperateCommands($command[1]);
+                foreach ($commands as $string) {
+                    $this->sendMessage($me->getServer(), $me->getChannel(), strlen($string));
+                }
+            }
+        }
+        
+        if ($this->isCommand($command, "trim")) {
+            $command = $this->parseCommands($me->getMessage(), 3);
+            if (isset($command[1], $command[2])) {
+                $commands = $this->parseSeperateCommands($command[2]);
+                foreach ($commands as $string) {
+                    $this->sendMessage($me->getServer(), $me->getChannel(), trim($string, $command[1]));
+                }
+            }
+        }
+        
+        
+        if ($this->isCommand($command, "implode")) {
+            $output = "";
+            
+            $command = $this->parseCommands($me->getMessage(), 3);
+            $insert  = $command[1];
+            $command = $this->parseSeperateCommands($command[2], 1000);
+            if (count($command) == 1) {
+                $command = $this->parseCommands($command[2], 1000);
+            }
+            
+            for ($a = 0; $a < count($command); $a++) {
+                if (isset($command[$a])) {
+                    if ($command[$a] != "") {
+                        $output .= $command[$a] . $insert;
+                    }
+                } else {
+                    break;
+                }
+            }
+            $this->sendMessage($me->getServer(), $me->getChannel(), $output);
+        }
+        
+        
+        if ($this->isCommand($command, "append")) {
+            $command = $this->parseCommands($me->getMessage(), 3);
+            if (isset($command[1], $command[2])) {
+                $token    = $command[1];
+                
+                $commands = $this->parseSeperateCommands($command[2]);
+                
+                foreach ($commands as $string) {
+                    if ($string != "") {
+                        $this->sendMessage($me->getServer(), $me->getChannel(), $string . $token);
+                    }
+                }
+            }
+        }
+        
+        if ($this->isCommand($command, "prepend")) {
+            $command = $this->parseCommands($me->getMessage(), 3);
+            if (isset($command[1], $command[2])) {
+                $token    = $command[1];
+                $commands = $this->parseSeperateCommands($command[2]);
+                foreach ($commands as $string) {
+                    $this->sendMessage($me->getServer(), $me->getChannel(), $token . $string);
+                }
+            }
+        }
+        
+        
+        
+        
+    }
+    
+    //Permissions ranges from 0 to 9000.
+    public function getUserPermissions($server, $channel, $nick, $command)
+    {
+        return 25;
+    }
+    
+    
+    public function pluginHelp($man, $me)
+    {
+        $man->sendMessage($me->getServer(), $me->getChannel(), "Alias Plugin " . $this->pluginVersion() . ". I explode strings by delimiter! ");
+        $man->sendMessage($me->getServer(), $me->getChannel(), 'Usage: `explode delimiter string`');
+        $man->sendMessage($me->getServer(), $me->getChannel(), 'Usage: `substring from to string`');
+    }
+    
+    
+}
+
+?>

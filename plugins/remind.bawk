@@ -1,0 +1,54 @@
+<?php
+
+class remind extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.remind");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Reminder";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.1";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+        $command = $this->parseCommands($me->getMessage(), 3);
+		
+		if ($this->isCommand($command,"remind") && isset($command[1],$command[2]) && is_numeric($command[1])){
+			print COMMANDSYMBOL.'say A reminder for: '.$me->getNick().'! | '.$command[2]."\r\n";
+			$cmd = $command[2];
+			if (substr($command[2],0,1) != COMMANDSYMBOL){
+				$cmd=COMMANDSYMBOL.'say '.$cmd;
+			}
+			if ($this->getCommandTimerSingleton()->addTimer($me->getServer(), $me->getNick(), $me->getChannel(), COMMANDSYMBOL.'say "A reminder for: '.$me->getNick().'!" & | '.$cmd, time()+((float)$command[1]*60)) != false){
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Alright, ".$me->getNick()."! I'll remind you in: ".($command[1])." minutes.");
+			}
+		}
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Remind Plugin ".$this->pluginVersion().". I can remind you to do something! ");
+	}
+	
+	
+}
+
+?>

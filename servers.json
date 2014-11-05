@@ -1,0 +1,12 @@
+[
+    {
+        "host": "irc.freenode.net",
+        "port": 6667,
+        "channels": [
+            "##redapps"
+        ],
+        "nick": "RedBot",
+        "onJoin": "PRIVMSG NickServ IDENTIFY rspyker123",
+        "authMethod": "NickServ"
+    }
+]

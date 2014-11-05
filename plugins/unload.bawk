@@ -1,0 +1,43 @@
+<?php
+
+class unload extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		$this->addHook("PRIVMSG.unload"); 
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Unloader";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+		$command = $this->parseCommands($me->getMessage(), 2);
+		
+		
+		if ($this->isCommand($command,"unload") && isset($command[1])) {
+			if (unloadPlugin($command[1])){
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Plugin unloaded.");
+			}else{
+				
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Plugin not unloaded. Perhaps it was already unloaded?");
+			}
+		}
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 100;
+	}
+}
+
+?>

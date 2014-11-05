@@ -1,0 +1,66 @@
+<?php
+
+class alias extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.alias");
+		$this->addHook("PRIVMSG.dealias");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Alias";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+        $command = $this->parseCommands($me->getMessage(), 3);
+		
+		if ($this->isCommand($command,"alias") && isset($command[1],$command[2])){
+			global $aliaser;
+			if ($aliaser->aliasExists($command[1]) == false){
+				$aliaser -> addAlias($command[1],$command[2]);
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Alias successful!");
+			}else{
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Alias unsuccessful because it was already defined. Dealias it first.");
+			}
+		}
+		
+		if ($this->isCommand($command,"dealias") && isset($command[1])){
+			global $aliaser;
+			if ($aliaser->aliasExists($command[1]) == true){
+				$aliaser -> removeAlias($command[1]);
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Dealias successful.");
+			}else{
+				
+				$this->sendMessage($me->getServer(),$me->getChannel(),"Dealias unsuccessful because it has not been defined yet.");
+			}
+		}
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 10;
+	}
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Alias Plugin ".$this->pluginVersion().". I frontend the Alias engine! ");
+		$man->sendMessage($me->getServer(),$me->getChannel(),'Usage: `alias aliasname command` to create alias. `dealias aliasname` to remove alias.');
+	}
+	
+	
+}
+
+?>

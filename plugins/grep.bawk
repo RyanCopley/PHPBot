@@ -1,0 +1,55 @@
+<?php
+
+class grep extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.grep");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Grep";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+		$command = $this->parseCommands($me->getMessage(), 3);
+		
+		if ($this->isCommand($command,"grep")) {
+			$messages = $this->parseSeperateCommands($command[2]); //Split the seperate lines of output.
+			
+			if (ord(substr($command[1],0,1)) >=48 && ord(substr($command[1],0,1)) <=122){
+				$command[1]="/".$command[1]."/";	
+			}
+			
+			foreach ($messages as $k => $message){
+				if (preg_match(trim($command[1]),trim($message))){
+					$this->sendMessage($me->getServer(),$me->getChannel(),$message);
+				}
+			}
+		}
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Grep Plugin ".$this->pluginVersion().".  ");
+		$man->sendMessage($me->getServer(),$me->getChannel(),'Usage: `grep needle haystack`. Useful for pipped outputs. Regular expressioned allowed.');
+	}
+	
+}
+
+?>

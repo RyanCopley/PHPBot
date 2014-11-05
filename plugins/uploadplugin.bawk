@@ -1,0 +1,77 @@
+<?php
+
+class uploadplugin extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.uploadplugin");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "UploadPlugin";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	//Versioning information.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+        $command = $this->parseCommands($me->getMessage(), 3);
+		
+		$filename = basename($command[1]);
+		
+		if (substr($filename,-5,5) == ".bawk"){
+			$path = 'plugins/'.$filename;
+			if (file_exists($path) == false || $command[2] == "-y"){
+				$time = round(microtime(true),3);
+		
+				$url  = $command[1];
+		 
+				$fp = fopen($path, 'w');
+		 
+				$ch = curl_init($url);
+				curl_setopt($ch, CURLOPT_FILE, $fp);
+		 
+				$data = curl_exec($ch);
+		 
+				curl_close($ch);
+				fclose($fp);
+		
+				$time = microtime(true) - $time;
+				$this->sendMessage($me->getServer(),$me->getChannel(),$filename." was downloaded in $time seconds.");
+			}else{
+				$this->sendMessage($me->getServer(),$me->getChannel(),$filename.' already exists. Use -y to overwrite ($uploadplugin {url} -y)');
+				
+			}
+		
+		}else{
+			$this->sendMessage($me->getServer(),$me->getChannel(),$command[1]." is not a BawkBot plugin.");
+		}
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 200;
+	}
+	
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Plugin Uploader ".$this->pluginVersion().". 1 paramter: URL to download. Plugin is not loaded automatically, do it yourself. ");
+	}
+	
+}
+
+?>

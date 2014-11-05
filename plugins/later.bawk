@@ -1,0 +1,98 @@
+<?php
+
+class later extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.later");
+		$this->addHook("BawkBot.logMsg");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Later";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	//Versioning information.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+        $command = $this->parseCommands($me->getMessage(), 3);
+        if (isset($command[1])){
+	        $printableNick = $command[1];
+			$command[1] = strtolower($command[1]);
+		}
+		
+		$pluginData = $this->getUserDataSingleton($me->getServer());
+			
+		if ($this->isCommand($command,"later") && isset($command[1],$command[2])) {
+			//[1] = Nick to later for
+			//[2] = Message.
+			
+			if ($pluginData->existsUserData($this->pluginName(),$me->getChannel(), $command[1], "Messages")){
+				
+				$val = $pluginData->getUserData($this->pluginName(),$me->getChannel(),$command[1]);
+				$val['Messages'][] = array(
+										"Message"=>$command[2],
+										"From"=>$me->getNick(),
+										"When"=>time() );
+				
+				$pluginData->addUserData($this->pluginName(),$me->getChannel(),$command[1],array("Messages"=>$val['Messages']));
+				
+				
+			}else{
+				$pluginData->addUserData($this->pluginName(),$me->getChannel(),$command[1],array("Messages"=>array(array("Message"=>$command[2],"From"=>$me->getNick(),"When"=>time()) )) );
+			}
+			
+			$this->sendMessage($me->getServer(),$me->getChannel(),"Thanks! I'll tell ".$printableNick." that when he chats next.");
+			
+		}
+		
+		//Get laters for the person who chatted.
+		
+		if ($me->getMessageType() == "PRIVMSG"){
+    		if ($pluginData->existsUserData($this->pluginName(),$me->getChannel(), strtolower($me->getNick()), "Messages")){
+    			
+    			$val = $pluginData->getUserData($this->pluginName(),$me->getChannel(),strtolower($me->getNick()));
+    			
+    			foreach ($val['Messages'] as $message){
+    				$t = round((time() - $message['When'])/60);
+    				$hours = round($t/60);
+    				$minutes =  $t % 60;
+    				
+    				$this->sendMessage($me->getServer(),$me->getChannel(),"[".$hours."h ".$minutes."m ago] To: ".$me->getNick().", from: ".$message['From'].": ".$message['Message']);
+    				
+    			}
+    			
+    			$pluginData->addUserData($this->pluginName(),$me->getChannel(),strtolower($me->getNick()),array("Messages" => array()) );
+    			
+    		}
+		}
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+	
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Later Plugin ".$this->pluginVersion().". Remind ChIkEn to finish this D: ");
+	}
+	
+}
+
+?>

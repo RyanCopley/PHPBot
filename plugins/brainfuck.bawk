@@ -1,0 +1,165 @@
+<?php
+
+
+class brainfuck extends plugin
+{
+    public function __construct()
+    {
+        parent::__construct();
+        
+        $this->addHook("PRIVMSG.bf");
+        $this->addHook("PRIVMSG.brainfuck");
+    }
+    
+    //Used for the BawkBot to know the plugin name for logs.
+    public function pluginName()
+    {
+        return "Brainfuck";
+    }
+    
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	
+    public function brainfuck_interpret(&$s, &$_s, &$d, &$_d, &$i, &$_i, &$o)
+    {
+        $execution_count = 0;
+        do {
+            $execution_count++;
+            switch ($s[$_s]) {
+                /* Execute brainfuck commands. Values are not stored as numbers, but as their
+                representing characters in the ASCII table. This is perfect, as chr(256) is
+                automagically converted to chr(0). */
+                case '+':
+                    $d[$_d] ++;
+                    break;
+                case '-':
+                    $d[$_d] --;
+                    break;
+                case '>':
+                    if ($_d < 1000) {
+                        $_d++;
+                        if (!isset($d[$_d])) {
+                            $d[$_d] = 0;
+                        }
+                    } else {
+                        $o = "Tape Overflow.";
+                        return $o;
+                    }
+                    break;
+                case '<':
+                    if ($_d > 0) {
+                        $_d--;
+                    } else {
+                        $o = "Tape Underflow.";
+                        return $o;
+                    }
+                    break;
+                
+                /* Output is stored in a variable. Change this to
+                echo $d[$_d]; flush();
+                if you would like to have a "live" output (when running long calculations, for example.
+                Or if you are just terribly impatient). */
+                case '.':
+                	if ($d[$_d] >=32 && $d[$_d] < 127){
+                    	$o .= chr($d[$_d]);
+                    }else{
+                    	$o .= "(".$d[$_d].")";
+                    }
+                    break;
+                
+                /* Due to PHP's non-interactive nature I have the whole input passed over in a string. 
+                I successively read characters from this string and pass it over to BF every time a
+                ',' command is executed. */
+                case ',':
+                	$d[$_d] = $_i==strlen($i) ? 0 : ord($i[$_i++]);
+                break;
+                
+                /* Catch loops */
+                case '[':
+                    /* Skip loop (also nested ones) */
+                    if ($d[$_d] == 0) {
+                        $brackets = 1;
+                        while ($brackets && $_s++ < strlen($s)) {
+                            if ($s[$_s] == '[')
+                                $brackets++;
+                            else if ($s[$_s] == ']')
+                                $brackets--;
+                        }
+                    }
+                    /* Execute loop */
+                    else {
+                        $pos = $_s++ - 1;
+                        /* The closing ] returns true when the loop has to be executed again. If so, then return
+                        to the $pos(ition) where the opening [ is. */
+                        if ($this->brainfuck_interpret($s, $_s, $d, $_d, $i, $_i, $o))
+                            $_s = $pos;
+                    }
+                    break;
+                /* Return true when loop has to be executed again. It is redundant to the [ checking, but
+                it will save some parsing time (otherwise the interpreter would have to return to [ only
+                to skip all characters again) */
+                case ']':
+                    return ($d[$_d] != 0);
+            }
+        } while (++$_s < strlen($s) && $execution_count < 250000);
+        if ($execution_count >= 250000) {
+            $o = "Execution limit reached.";
+            return $o;
+        }
+    }
+    
+    /* Call this one in order to interpret brainfuck code */
+    
+    public function brainfuck($source, $input = '')
+    {
+        $data         = array();
+        $data[0]      = 0;
+        $data_index   = 0;
+        $source_index = 0;
+        $input_index  = 0;
+        $output       = '';
+        
+        /* Call the actual interpreter */
+        $this->brainfuck_interpret($source, $source_index, $data, $data_index, $input, $input_index, $output);
+        if ($output != "") {
+            return $output;
+        } else {
+            return "No output.";
+        }
+    }
+    
+    
+    public function pluginLogic()
+    {
+        $me = $this->receiveMessage();
+        
+        $command = $this->parseCommands($me->getMessage(), 3);
+        print "BF MSG:".$me->getMessage()."\r\n";
+        
+        if (($this->isCommand($command,"brainfuck") || $this->isCommand($command,"bf")) && isset($command[1])) {
+            $input = (isset($command[2])) ? $command[1] : "";
+            $code  = (isset($command[2])) ? $command[2] : $command[1];
+            $output = $this->brainfuck($code, $input);
+            $this->sendMessage($me->getServer(), $me->getChannel() , $output);
+        }
+    }
+    
+    //Permissions ranges from 0 to 9000.
+    final public function getUserPermissions($server,$channel,$nick,$command)
+    {
+        return 0;
+    }
+    
+    
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Brainfuck Plugin ".$this->pluginVersion().". ");
+		$man->sendMessage($me->getServer(),$me->getChannel(),'Usage: `bf input program`, ex: `bf hello ,.,.,.,.,.` -> Outputs "hello"');
+	}
+	
+	
+}
+
+?>

@@ -1,0 +1,178 @@
+<?php
+
+class translate extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+				
+		
+		$this->addHook("PRIVMSG.translate"); // To request a log.
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Translate";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+
+	public function in_arrayi( $needle, $haystack, $default = NULL) { 
+        foreach( $haystack as $key => $value ) { 
+            if( strtolower( $key ) == strtolower( $needle ) ) { 
+                return $value;
+            } 
+        }    
+        return $default; 
+    } 
+    
+
+	public function pluginLogic(){
+	
+	$languages = array( "Afrikaans" => "af",
+						"Albanian" => "sq",
+						"Arabic" => "ar",
+						"Armenian" => "hy",
+						"Azerbaijani" => "az",
+						"Basque" => "eu",
+						"Belarusian" => "be",
+						"Bulgarian" => "bg",
+						"Catalan" => "ca",
+						"Croatian" => "hr",
+						"Czech" => "cs",
+						"Chinese" => "zh-TW",
+						"Traditional Chinese" => "zh-TW",
+						"Simplified Chinese" => "zh-CN",
+						"Chinese (Traditional)" => "zh-TW",
+						"Chinese (Simplified)" => "zh-CN",
+						"Danish" => "da",
+						"Dutch" => "nl",
+						"English" => "en",
+						"Estonian" => "et",
+						"Filipino" => "tl",
+						"Finnish" => "fi",
+						"French" => "fr",
+						"Galician" => "gl",
+						"Georgian" => "ka",
+						"German" => "de",
+						"Greek" => "el",
+						"Haitian Creole" => "ht",
+						"Hebrew" => "iw",
+						"Hindi" => "hi",
+						"Hungarian" => "hu",
+						"Icelandic" => "is",
+						"Indonesian" => "id",
+						"Irish" => "ga",
+						"Italian" => "it",
+						"Japanese" => "ja",
+						"Korean" => "ko",
+						"Latin" => "la",
+						"Latvian" => "lv",
+						"Lithuanian" => "lt",
+						"Macedonian" => "mk",
+						"Malay" => "ms",
+						"Maltese" => "mt",
+						"Norwegian" => "no",
+						"Persian" => "fa",
+						"Polish" => "pl",
+						"Portuguese" => "pt",
+						"Romanian" => "ro",
+						"Russian" => "ru",
+						"Serbian" => "sr",
+						"Slovak" => "sk",
+						"Slovenian" => "sl",
+						"Spanish" => "es",
+						"Swahili" => "sw",
+						"Swedish" => "sv",
+						"Thai" => "th",
+						"Turkish" => "tr",
+						"Ukrainian" => "uk",
+						"Urdu" => "ur",
+						"Vietnamese" => "vi",
+						"Welsh" => "cy",
+						"Yiddish" => "yi");
+						
+		$languages_inverse = array();
+		foreach ($languages as $key => $value) {
+			$languages_inverse[$value] = $key;
+		}
+
+		$me = $this->receiveMessage();
+		
+		//>translate from dutch asldkfaklsdfj asdf asdf asdf
+		//>translate from dutch to english al;skdfjalsdk;fj 
+		$command = $this->parseCommands($me->getMessage(), 1000);
+		
+		
+		if ($this->isCommand($command,"translate")) {
+			
+			$i = 2;
+			$from = "auto";
+			$to = "en";
+			
+			if (isset($command[2]) && $command[1] == "from"){
+				$from = $command[2];
+				$i = 4;
+			}
+			
+			if (isset($command[2]) && $command[1] == "to"){
+				$to = $command[2];
+				$i = 4;
+			}
+			
+			if (isset($command[4]) && $command[3] == "from"){
+				$from = $command[4];
+				$i = 6;
+			}
+			
+			if (isset($command[4]) && $command[3] == "to"){
+				$to = $command[4];
+				$i = 6;
+			}
+			
+			$from = $this->in_arrayi($from, $languages, 'auto');
+			$to = $this->in_arrayi($to, $languages, 'en');
+			
+			$text = $this->parseCommands($me->getMessage(), $i);
+			
+			$textLine = $this->parseSeperateCommands($text[$i-1]);
+			foreach ($textLine as $text){
+				$query = array(
+					'client' => 'x',
+					'text' => $text,
+					'sl' => $from,
+					'tl' => $to
+				);
+
+				$url = "http://translate.google.com/translate_a/t?" . http_build_query($query);
+				
+				$ch = curl_init();
+				curl_setopt($ch,CURLOPT_RETURNTRANSFER, TRUE);
+				curl_setopt($ch,CURLOPT_URL,$url);
+				curl_setopt($ch,CURLOPT_HTTPHEADER,array('User-Agent: Mozilla/5.0 (Windows NT 6.1; rv:8.0) Gecko/20100101 Firefox/8.0','Referer: http://translate.google.com/'));
+				
+				$result = json_decode(curl_exec($ch),true);
+				curl_close($ch);
+				$translation = "";
+				foreach ($result['sentences'] as $k => $sentence){
+					$translation .= trim($sentence['trans'])." ";
+				}
+				if ($from == 'auto' && isset($result['src'])) {
+					$from_full = $languages_inverse[$result['src']];
+					$translation .= " (from $from_full)";
+				}
+				$this->sendMessage($me->getServer(),$me->getChannel(),$translation);
+			}
+		}
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	final public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}
+
+?>

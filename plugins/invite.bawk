@@ -1,0 +1,55 @@
+<?php
+
+class invite extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("BawkBot.logMsg");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Invite";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		if ($me->getMessageType() == "INVITE"){
+		
+			$toJoin = trim($me->getMessage());
+			$toJoin=preg_replace('/[^(\x20-\x7F)]*/','', $toJoin);
+			SendCommand($me->getServer(), "JOIN $toJoin\r\n");
+			
+			global $serverThreads;
+			$host = $me->getServer();
+			$host = $host['host'];
+			
+			foreach ($serverThreads as &$server){
+				if ($server['host'] == $host){
+					$server["channels"][] = $toJoin;
+				}
+			}
+		}
+		
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Invite Plugin ".$this->pluginVersion().".  No man needed. (Not a command plugin)");
+	}
+}
+
+?>

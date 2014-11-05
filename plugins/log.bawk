@@ -1,0 +1,150 @@
+<?php
+
+class log extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		mkdir("plugins/log/");
+		include_once("libraries/bawkpaste.php");
+
+		$this->addHook("PRIVMSG.log"); // To request a log.
+
+		$this->addHook("BawkBot.logMsg");   // Grabs all messages that aren't piped, except bawkbot output (its different)
+											//Note: All these messages have a chr(4) appended to their front.
+		$this->addHook("BawkBot.Messages"); // Grab all text that BawkBot outputs also...
+	}
+
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Log";
+	}
+
+
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.8";
+	}
+
+
+
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+
+
+		$theMsg = str_replace(chr(4),"",$me->getMessage());
+		$theMsg = str_replace(chr(1),"",$theMsg);
+		$theMsg = str_replace("\r", "", $theMsg);
+		$theMsg = str_replace("\n", "", $theMsg);
+
+		if (strtolower(substr($me->getMessage(),0,5)) != chr(4).COMMANDSYMBOL.'log'){ // Prevent double logging $logs...
+
+			$logChannel = $me->getChannel();
+
+			$allLog = array("QUIT","NICK");
+			if (in_array($me->getMessageType(),$allLog)){
+				$thisServer = $me->getServer();
+				foreach ($thisServer["channels"] as $k=>$logChannel){
+									$server = $me->getServer();
+					$log = fopen("plugins/log/".date("d-m-Y")."-".$logChannel."-on-".$server['host'].".log","a+");
+
+					switch($me->getMessageType()){
+						case "QUIT":
+							$message = sprintf("[%s] < %s@%@ %s", date("d M y H:i"), $me->getNick(),$me->getHostMask(), $theMsg);
+							fwrite($log,$message."\r\n");
+							
+						break;
+						case "NICK":
+							
+							$message = sprintf("[%s] = %s@%s is now known as %s", date("d M y H:i"), $me->getNick(),$me->getHostMask(), $theMsg);
+							fwrite($log,$message."\r\n");
+
+						break;
+					}
+					fclose($log);
+				}
+			}else{
+
+				$server = $me->getServer();
+				$log = fopen("plugins/log/".date("d-m-Y")."-".$logChannel."-on-".$server['host'].".log","a+");
+
+					switch ($me->getMessageType()){
+						case "PRIVMSG":
+						
+							if (ord(substr($theMsg,0,1)) == 1 && substr($theMsg,1,6) == "ACTION"){
+							     $theMsg = substr($theMsg,7);
+							}else{
+							     $theMsg = "* ".$theMsg;
+							}
+							
+							$message = sprintf("[%s] * %s %s", date("d M y H:i"), $me->getNick(), $theMsg);
+							fwrite($log,$message."\r\n");
+						break;
+						case "PART":
+							$message = sprintf("[%s] < %s has left", date("d M y H:i"), $me->getNick());
+							fwrite($log,$message."\r\n");
+							
+						break;
+
+						case "JOIN":
+							$message = sprintf("[%s] > %s@%s has joined", date("d M y H:i"), $me->getNick(),$me->getHostMask());
+							fwrite($log,$message."\r\n");
+							
+						break;
+						case "KICK":
+							$kickMsg = explode(" ",$theMsg);
+							$kickMsg[1] = substr($kickMsg[1],1,-2);
+							
+							$message = sprintf("[%s] < %s kicked %s: %s", date("d M y H:i"), $me->getNick(),$kickMsg[0],$kickMsg[1]);
+							fwrite($log,$message."\r\n");
+							
+							
+						break;
+
+						case "MODE":
+							$modeChange = explode(" ", $theMsg);
+							
+							//  "mode"    :  complete[0].split()[3]
+							//  "person"  :  ', '.join(complete[0].split()[4:])
+							
+							$mode = $modeChange[0]; unset($modeChange[0]);
+							$message = sprintf("[%s] = %s  set mode %s on %s", date("d M y H:i"), $me->getNick(),$mode,implode(", ",$modeChange));
+							fwrite($log,$message."\r\n");
+							
+						break;
+
+					}
+
+				fclose($log);
+			}
+		}
+
+		$command = $this->parseCommands($me->getMessage(), 2);
+		$server = $me->getServer();
+
+		if ($this->isCommand($command,"log")) {
+			$logTime = time();
+			if (isset($command[1]) && is_numeric($command[1])){
+				$logTime = mktime(0, 0, 0, date("m")  , date("d")-(int)$command[1], date("Y"));
+			}
+
+
+			$logdata = file_get_contents("plugins/log/".date("d-m-Y",$logTime)."-".$me->getChannel()."-on-".$server['host'].".log");
+			
+			
+			$logdata = substr($logdata,0,-2);
+
+	        $paste = new pastebin();
+	        $pasteURL = $paste->setTitle("Log for: ".date("d-m-Y",$logTime))->setPasteName("BawkBot")->setText($logdata)->setLanguage("irc")->execute();
+
+
+			$this->sendMessage($me->getServer(),$me->getChannel(),$pasteURL);
+		}
+	}
+
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}
+
+?>

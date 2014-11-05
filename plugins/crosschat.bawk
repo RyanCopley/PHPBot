@@ -1,0 +1,50 @@
+<?php
+
+class crosschat extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.xchat");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Cross Chat";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	//Versioning information.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+        $command = $this->parseCommands($me->getMessage(), 3);
+		
+		$this->sendMessage($me->getServer(),$command[1],$command[2]);
+		
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 500;
+	}
+	
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Cross Plugin ".$this->pluginVersion().". ");
+	}
+	
+}
+
+?>

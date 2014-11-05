@@ -1,0 +1,50 @@
+<?php
+
+class say extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.say");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Say";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	//Versioning information.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+        $command = $this->parseCommands($me->getMessage(), 2);
+		
+		$this->sendMessage($me->getServer(),$me->getChannel(),$command[1]);
+		
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+	
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"Say Plugin ".$this->pluginVersion().". I output my input arguments. ");
+	}
+	
+}
+
+?>

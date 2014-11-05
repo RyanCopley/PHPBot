@@ -1,0 +1,252 @@
+<?php
+
+
+
+class urlfollow extends plugin{
+
+	private $curl_multi;
+
+	public function __construct(){
+		parent::__construct();
+		include_once("libraries/asynccurl.php");
+		$this->addHook("BawkBot.logMsg");
+		$this->addHook("PRIVMSG.urlfollowtimerdonotcallmanually");
+		$this->curl_multi = new Curl_Multi();
+
+
+	}
+
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "UrlFollow";
+	}
+
+
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";
+	}
+
+	private function transformTitle($title) {
+		//$title = preg_replace_callback("/(&#[0-9]+;)/", function($m) { return mb_convert_encoding($m[1], "UTF-8", "HTML-ENTITIES"); }, $title); // unicode
+		$title = html_entity_decode($title, ENT_COMPAT, 'UTF-8'); // the other stuff
+		$title = trim(preg_replace('#\s+#',' ', $title));
+		return $title;
+	}
+
+	private $url_regex = '~^https?://([-\\.a-zA-Z0-9]+\.[a-zA-Z0-9]+(?::\d+)?)(?:/(?:[^\s#]*)?)?~';
+
+	// Special responses for specific websites
+	private $specials = array(
+		'#^https?://(www\.)?youtube\.com#i' => 'parseYoutube',
+		'#^https?://(www\.)?twitter\.com#i' => 'parseTwitter'
+	);
+
+	private function getStringBetween($string, $start, $end){
+		$string = " ".$string;
+		$ini = strpos($string,$start);
+		if ($ini == 0) return "";
+		$ini += strlen($start);
+		$len = strpos($string,$end,$ini) - $ini;
+		return substr($string,$ini,$len);
+	}
+
+	private function parseTwitter($content) {
+		if (preg_match('#page\((\{.*?\})\);#', $content, $match) == 1) {
+			$object = json_decode($match[1]);
+
+			$tweet = $this->transformTitle($object->embedData->status->text);
+
+			$user = $object->embedData->status->user->screen_name;
+			$date = strtotime($object->embedData->status->created_at);
+			$diff = time() - $date;
+
+			if ($diff < 60) {
+				$timespan = "{$diff} seconds ago";
+			}
+			else if ($diff < 60 * 60) {
+				$timespan = (int)($diff / 60) . " minutes ago";
+			}
+			else if ($diff < 24 * 60 * 60) {
+				$timespan = (int)($diff / 3600) . " hours ago";
+			}
+			else if ($diff < 5 * 24 * 60 * 60) {
+				$timespan = (int)($diff / 3600) . " days ago";
+			}
+			else $timespan = "at " . strftime("%d %b", $date);
+
+			return "$user tweeted $timespan: $tweet";
+		}
+		else return FALSE;
+	}
+
+	private function parseYoutube($content) {
+		if (preg_match('#yt\.playerConfig = (\{.*?\});#', $content, $match) == 1) {
+			$object = json_decode($match[1]);
+
+			$title = $this->transformTitle($object->args->title);
+
+			$user = NULL; //$object->args->ptchn;
+			if ($user === NULL) {
+				if (preg_match('#<link itemprop="url" href="http://www.youtube.com/user/(.+?)">#', $content, $match)) {
+					$user = $match[1];
+				}
+			}
+
+			$length = (int)($object->args->length_seconds);
+
+			if ($length < 60) {
+				$length = "$length sec";
+			}
+			else if ($length < 3600) {
+				$minutes = floor($length / 60);
+				$seconds = $length % 60;
+				$length = "$minutes min $seconds sec";
+			}
+			else {
+				$hours = floor($length / 3600);
+				$minutes = floor($length / 60) % 60;
+				$seconds = $length % 60;
+				$length = "$hours hours $minutes min $seconds sec";
+			}
+
+			return "$title - by $user ($length)";
+		}
+		else return FALSE;
+	}
+
+	public function parseResponse($content, $original_url, $original_domain, $new_url) {
+		$url = $original_url;
+		$domain = $original_domain;
+
+		// Unresolved DNS
+		if ($content == false) {
+			return "Unable to resolve $domain." . $error;
+		}
+
+		// Get new URL/domain if a redirect happend
+		if (preg_match($this->url_regex, $new_url, $new_domain_match)) {
+			$new_domain = $new_domain_match[1];
+		}
+		else $new_domain = $domain;
+
+		// Parse headers
+		if (preg_match('#.*?<html#is', $content, $headers_match) != 1) {
+			return NULL;
+		}
+		$headers = $headers_match[0];
+
+		// Check 404 or some kind
+		if (preg_match_all("#HTTP/\d+\.\d+ ((\d+) .*?)\r\n#i", $headers, $http_statuses, PREG_SET_ORDER) > 0) {
+			$http_status = $http_statuses[count($http_statuses)-1];
+
+			$code = $http_status[2];
+			$status = $http_status[1];
+			if ($code != '200') {
+				return "Status: $status (at $domain)";
+			}
+		}
+
+		// 200 OK
+		// Check special cases:
+		foreach ($this->specials as $url_regex => $function_name) {
+			if (preg_match($url_regex, $url)) {
+				$result = $this->{$function_name}($content);
+				if ($result === FALSE)
+					break;
+				else {
+					return $result;
+				}
+			}
+		}
+
+		// Normal pages:
+		if (preg_match('#<title>(.*?)</title>#is', $content, $match) == 1) {
+			$title = $this->transformTitle($match[1]);
+
+			if ($new_domain != $domain) {
+				return "Target title: $title (at $new_domain)";
+			}
+			else return "Title: $title (at $domain)";
+		}
+
+		return NULL;
+	}
+
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		if ($me->getNick() == "BawkBot"){return;}
+
+        $command = $this->parseCommands($me->getMessage(), 1);
+		if ($this->isCommand($command,"urlfollowtimerdonotcallmanually") == false){
+
+			$message = substr($me->getMessage(),1); // Some random byte. --ChIkEn. I'll fix this in the bot core later, and update this section.
+			$words = preg_split('#\s+#', $message);
+
+
+			foreach ($words as $word) {
+				$word = rtrim($word, ',.!?');
+				if (preg_match($this->url_regex, $word, $match)) {
+					$url = $match[0];
+					$domain = $match[1];
+
+
+					$ch = curl_init();
+					curl_setopt($ch, CURLOPT_URL, $url);
+					curl_setopt($ch, CURLOPT_HEADER, true);
+					curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1; rv:14.0) Gecko/20100101 Firefox/14.0.1');
+					curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+					curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+					curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+					curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+					curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+					curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+					$callback = function($curl_info, $curl_data, $callback_data)
+					{
+
+						$content = $curl_data;
+						$new_url = curl_getinfo($callback_data["C"], CURLINFO_EFFECTIVE_URL);
+						$error = curl_error($callback_data["C"]);
+
+						if ($response = $callback_data["T"]->parseResponse($content, $callback_data["U"], $callback_data["D"], $new_url)){
+							$callback_data["T"]->sendMessage($callback_data["M"]->getServer(), $callback_data["M"]->getChannel(), $response);
+						}
+					};
+
+
+					$this->curl_multi->addHandle($ch, $callback, array("C"=>&$ch,"M"=>&$me,"T"=>&$this,"D"=>$domain,"U"=>$url));
+					$this->curl_multi->poll(); //Start it...
+					$this->getCommandTimerSingleton()->addTimer($me->getServer(), $me->getNick(), $me->getChannel(), COMMANDSYMBOL."urlfollowtimerdonotcallmanually", time());
+
+				}
+			}
+		}
+
+		if ($this->isCommand($command,"urlfollowtimerdonotcallmanually")){
+			for ($i = 0; $i < 200; $i ++){
+				if ($this->curl_multi->select()){
+					break;
+				}
+			}
+			if  ($this->curl_multi->select()){
+				if ($this->getCommandTimerSingleton()->addTimer($me->getServer(), $me->getNick(), $me->getChannel(), COMMANDSYMBOL."urlfollowtimerdonotcallmanually", time()+1)){
+
+				}else{
+					print "FAILED TO REPOLL\r\n";
+				}
+
+			}else{
+			}
+		}
+
+
+	}
+
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}
+
+?>

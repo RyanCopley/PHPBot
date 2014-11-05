@@ -1,0 +1,64 @@
+<?php
+
+class mock extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.mock");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Mock";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	//Versioning information.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+        $command = $this->parseCommands($me->getMessage(), 2);
+        if (isset($command[1])){
+	        $mocked = trim($command[1]);
+        }else{
+			$mocked = $me->getNick();
+		}
+		$i = 1;
+		
+		$this->sendMessage($me->getServer(),$me->getChannel(),$mocked." IS A STUPID DOUCHER (lolupdate) AND FUCK YOU ROB");
+		
+		$pluginData = $this->getUserDataSingleton($me->getServer());
+		if ($pluginData->existsUserData($this->pluginName(),$me->getChannel(), $mocked, "MockedTimes")){
+			
+			$val = $pluginData->getUserData($this->pluginName(),$me->getChannel(),$mocked);
+			$val['MockedTimes']++;
+			$this->sendMessage($me->getServer(),$me->getChannel(),$mocked." has been mocked ".$val['MockedTimes']." times now.");
+			
+			
+			$pluginData->addUserData($this->pluginName(),$me->getChannel(),$mocked,array("MockedTimes"=>$val['MockedTimes']));
+		}else{
+			$this->sendMessage($me->getServer(),$me->getChannel(),"This is the first time that ".$mocked." has been mocked!");
+			
+			$pluginData->addUserData($this->pluginName(),$me->getChannel(),$mocked,array("MockedTimes"=>1));
+		}
+		
+		
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}
+
+?>

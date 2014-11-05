@@ -1,0 +1,16 @@
+{
+  "BawkBotPermissions":{
+    "#BAWKBOTTESTNEST":{
+      "CHIKEN":{
+        "PermissionLevel":0,
+        "isAuthenticated":1
+      }
+    },
+    "#64DIGITS":{
+      "CHIKEN":{
+        "PermissionLevel":0,
+        "isAuthenticated":1
+      }
+    }
+  }
+}

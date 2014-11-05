@@ -1,0 +1,74 @@
+<?php
+
+class source extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		include_once("libraries/bawkpaste.php");
+		
+		$this->addHook("PRIVMSG.source"); // To request a log.
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Source";
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+		
+		$command = $this->parseCommands($me->getMessage(), 2);
+		
+		
+		if ($this->isCommand($command,"source") && isset($command[1])) {
+			
+			$commands = $this->parseSeperateCommands($command[1]);
+			foreach ($commands as $message){
+				$message = trim ($message);
+				if ($message != ""){
+					$contents = "";
+					if ($message=="bawkbot"){
+						$contents = file_get_contents("bawkbot.php");
+					}else if ($message=="plugin"){
+						$contents = file_get_contents("bawkplugin.php");
+					}else{
+						if (file_exists("plugins/".$message.".bawk")){
+							$contents = file_get_contents("plugins/".$message.".bawk");
+						}
+					}
+					
+					if ($contents != ""){
+					
+						//Specialty code designed to stop the BawkBot nickserv password from being easily visible. Try harder :D
+						$contents = str_replace("SlashNetIsABitch","[BAWKBOTSOURCECENSORED]",$contents);
+						$contents = str_replace("BawkBotPermissions","[BAWKBOTSOURCECENSORED]",$contents);
+						
+						
+						
+				        $paste = new pastebin();
+				        $pasteURL = $paste->setTitle("Source for: ".$message)->setPasteName("BawkBot")->setText($contents)->setLanguage("php")->execute();
+			            
+						$this->sendMessage($me->getServer(),$me->getChannel(),$pasteURL);
+					}else{
+						$this->sendMessage($me->getServer(),$me->getChannel(),"I cannot find the source to that.");
+					}
+				}
+					
+			}
+		}
+	}
+	
+	//Permissions ranges from 0 to 9000.
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}
+
+?>

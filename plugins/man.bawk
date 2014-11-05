@@ -1,0 +1,63 @@
+<?php
+/*This plugin uses non standard methods! Do not use this for example code!*/
+class man extends plugin{
+
+	public function __construct(){
+		parent::__construct();
+		
+		$this->addHook("PRIVMSG.man");
+	}
+	
+	//Used for the BawkBot to know the plugin name for logs.
+	public function pluginName(){
+		return "Man Pages";
+	}
+	
+	//For you know... reference.
+	public function pluginContact(){
+		return "ChIkEn";	
+	}
+	
+	//Versioning information.
+	public function pluginVersion(){
+		return "1.0";	
+	}
+	
+	public function pluginLogic(){
+		$me = $this->receiveMessage();
+
+		$command = $this->parseCommands($me->getMessage(), 3);
+		
+		/*Non-standard way to grab plugins*/
+		global $plugins;
+		$foundPlugin = false;
+		foreach ($plugins as $plugin){
+			if (strtolower(trim($plugin["name"])) == strtolower(trim($command[1]))){
+				if ($plugin["object"]->pluginHelp($this,$me)=="NOMAN"){
+					$foundPlugin = true;
+					$this->sendMessage($me->getServer(),$me->getChannel(),"Man page not found! Bug `".$plugin["object"]->pluginContact()."` to add a pluginHelp method!");
+				}else{
+					$foundPlugin = true;
+				}
+			}
+		}
+		
+		if ($foundPlugin == false){
+			$this->sendMessage($me->getServer(),$me->getChannel(),"I didn't find a plugin by that name. Sorry!");
+		}
+	}
+	
+	
+	
+	public function pluginHelp($man, $me){
+		$man->sendMessage($me->getServer(),$me->getChannel(),"MANual Plugin ".$this->pluginVersion().". This plugin deals with plugin HELP information. Paramters: 1, 2 optional.");
+		$man->sendMessage($me->getServer(),$me->getChannel(),'Parameter 1: Plugin Name. Parameter 2: (Optional) Command.  Example (gets the manual for this plugin): `$man man`');
+	}
+	
+	
+	public function getUserPermissions($server,$channel,$nick,$command){
+		return 0;
+	}
+}
+
+?>
