@@ -6,7 +6,7 @@
             "##redapps"
         ],
         "nick": "RedBot",
-        "onJoin": "PRIVMSG NickServ IDENTIFY rspyker123",
+        "onJoin": "PRIVMSG NickServ IDENTIFY",
         "authMethod": "NickServ"
     }
 ]
